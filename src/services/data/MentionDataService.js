@@ -6,20 +6,30 @@ export class MentionDataService {
     /** @type {MentionDataService | null} */
     static instance = null;
 
-    static getInstance({db, socialMediaService}) {
+    /**
+     * @param {Object} [options]
+     * @param {import('../../models/index.js')} [options.db]
+     * @param {SocialMediaService} [options.socialMediaService]
+     */
+    static getInstance({db, socialMediaService} = {}) {
         if (!MentionDataService.instance) {
           MentionDataService.instance = new MentionDataService({db, socialMediaService});
         }
         return MentionDataService.instance;
     }
 
-    constructor({db, socialMediaService}) {
+    /**
+     * @param {Object} [options]
+     * @param {import('../../models/index.js')} [options.db]
+     * @param {SocialMediaService} [options.socialMediaService]
+     */
+    constructor({db, socialMediaService} = {}) {
       this.db = db || dbInstance;
       this.socialMediaService = socialMediaService || SocialMediaService.getInstance();
     }
     
     async findAll() {
-        return [];
+        return this.socialMediaService.findAllPosts();
     }
 
     async update() {
