@@ -12,7 +12,7 @@ const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
 
 // Import config
-const configModule = await import('../config.js');
+const configModule = await import('./config.js');
 const config = configModule.default[env];
 
 const db = {};
