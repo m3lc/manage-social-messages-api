@@ -1,0 +1,31 @@
+{
+  "name": "manage-social-messages-api",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node -r dotenv/config --watch --inspect src/index.js",
+    "start": "node -r dotenv/config src/index.js",
+    "db:migrate": "npx sequelize-cli db:migrate --config ./src/models/config.js --migrations-path ./src/models/migrations",
+    "db:migrate:undo": "npx sequelize-cli db:migrate:undo --config ./src/models/config.js --migrations-path ./src/models/migrations",
+    "db:migrate:gen": "npx sequelize-cli migration:generate --migrations-path ./src/models/migrations --config ./src/models/config.js --name",
+    "db:seed": "npx sequelize-cli db:seed:all --config ./src/models/config.js --seeders-path ./src/models/seeders",
+    "db:seed:undo": "npx sequelize-cli db:seed:undo --config ./src/models/config.js --seeders-path ./src/models/seeders",
+    "db:seed:gen": "npx sequelize-cli seed:generate --seeders-path ./src/models/seeders --config ./src/models/config.js --name"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "pg": "^8.16.3",
+    "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "sequelize-cli": "^6.6.3"
+  }
+}
