@@ -1,11 +1,7 @@
 // @ts-check
 
-import { mentionRoutes } from './mentionRoutes.js';
-import { userRoutes } from './userRoutes.js';
-import { statusRoutes } from './statusRoutes.js';
+import { mentionRoutes } from '#@routes/mention-routes.js';
+import { userRoutes } from '#@routes/user-routes.js';
+import { statusRoutes } from '#@routes/status-routes.js';
 
-export const routes = [
-  mentionRoutes,
-  userRoutes,
-  statusRoutes
-];
+export const routes = [mentionRoutes, userRoutes, statusRoutes];
