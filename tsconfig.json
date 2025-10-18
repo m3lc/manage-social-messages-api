@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    // Type checking
+    "checkJs": true,
+    "noEmit": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+
+    // Module resolution
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "target": "ES2022",
+
+    // Interop
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+
+    // Advanced features
+    "experimentalDecorators": true,
+    "downlevelIteration": true,
+
+    // Library
+    "lib": ["ES2022"],
+    "types": ["node"],
+
+    // Project references
+    "baseUrl": ".",
+    "paths": {
+      "#@/*": ["src/*"],
+      "#@controllers/*": ["src/controllers/*"],
+      "#@enums/*": ["src/enums/*"],
+      "#@middleware/*": ["src/middleware/*"],
+      "#@models/*": ["src/models/*"],
+      "#@routes/*": ["src/routes/*"],
+      "#@services/*": ["src/services/*"]
+    }
+  },
+  "include": ["src/**/*.js"],
+  "exclude": ["node_modules", "dist", "build"]
+}

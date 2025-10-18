@@ -3,10 +3,24 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "type": "module",
+  "imports": {
+    "#@/*": "./src/*",
+    "#@controllers/*": "./src/controllers/*",
+    "#@enums/*": "./src/enums/*",
+    "#@middleware/*": "./src/middleware/*",
+    "#@models/*": "./src/models/*",
+    "#@routes/*": "./src/routes/*",
+    "#@services/*": "./src/services/*"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node -r dotenv/config --watch --inspect src/index.js",
     "start": "node -r dotenv/config src/index.js",
+    "type-check": "tsc -p .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "db:migrate": "npx --node-options=\"-r dotenv/config\" sequelize-cli db:migrate --config ./src/models/config.js --migrations-path ./src/models/migrations",
     "db:migrate:undo": "npx --node-options=\"-r dotenv/config\" sequelize-cli db:migrate:undo --config ./src/models/config.js --migrations-path ./src/models/migrations",
     "db:migrate:gen": "npx --node-options=\"-r dotenv/config\" sequelize-cli migration:generate --migrations-path ./src/models/migrations --config ./src/models/config.js --name",
@@ -26,9 +40,15 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "pg": "^8.16.3",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
   },
   "devDependencies": {
     "sequelize-cli": "^6.6.3"
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2",
+    "sequelize-cli": "^6.6.3",
+    "typescript": "^5.9.3"
   }
 }
