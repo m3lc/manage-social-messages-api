@@ -1,6 +1,6 @@
 // @ts-check
 
-import { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_DIALECT } from '../config.js';
+import { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_DIALECT } from '#@/config.js';
 
 export default {
   development: {
