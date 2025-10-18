@@ -1,7 +1,8 @@
 // @ts-check
+
 import jwt from 'jsonwebtoken';
-import dbInstance from '../../models/index.js';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config.js';
+import { db as dbInstance } from '#@models/index.js';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '#@/config.js';
 
 export class UserDataService {
   /** @type {UserDataService | null} */
@@ -25,6 +26,10 @@ export class UserDataService {
   constructor(options) {
     const { db } = options || {};
     this.db = db || dbInstance;
+  }
+
+  async findAll() {
+    return this.db.User.findAll();
   }
 
   /**
@@ -57,7 +62,7 @@ export class UserDataService {
       { email: user.email, id: user.id },
       JWT_SECRET,
       /** @type {import('jsonwebtoken').SignOptions} */ ({
-        expiresIn: JWT_EXPIRES_IN
+        expiresIn: JWT_EXPIRES_IN,
       })
     );
 
@@ -65,8 +70,8 @@ export class UserDataService {
       token,
       user: {
         id: user.id,
-        email: user.email
-      }
+        email: user.email,
+      },
     };
   }
 

@@ -1,9 +1,14 @@
 // @ts-check
-import { UserDataService } from '../services/data/UserDataService.js';
+import { UserDataService } from '#@services/data/user-data-service.js';
 
 export class UserController {
   constructor(service) {
     this.service = service || UserDataService.getInstance();
+  }
+
+  async findAll(req, res) {
+    const result = await this.service.findAll();
+    res.json(result);
   }
 
   async login(req, res) {
@@ -15,14 +20,14 @@ export class UserController {
       }
 
       const result = await this.service.authenticate(email);
-      
+
       res.json({
         token: result.token,
-        user: result.user
+        user: result.user,
       });
     } catch (error) {
-      res.status(401).json({ 
-        error: error.message || 'Authentication failed' 
+      res.status(401).json({
+        error: error.message || 'Authentication failed',
       });
     }
   }
