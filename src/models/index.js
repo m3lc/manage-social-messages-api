@@ -1,22 +1,18 @@
 // @ts-check
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
-import { Sequelize, DataTypes } from 'sequelize';
+import { Sequelize } from 'sequelize';
 import process from 'process';
+import { NODE_ENV } from '#@/config.js';
+import { initModels } from '#@models/utils/init-models.js';
+import { initAssociations } from '#@models/utils/init-associations.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
+const env = NODE_ENV;
 
 // Import config
-const configModule = await import('./config.js');
+const configModule = await import('#@models/config.js');
 const config = configModule.default[env];
 
-const db = {};
-
+// Create Sequelize instance
 let sequelize;
 if (config.use_env_variable) {
   sequelize = new Sequelize(process.env[config.use_env_variable] || '', config);
@@ -24,33 +20,12 @@ if (config.use_env_variable) {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
 }
 
-const files = fs
-  .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file !== 'config.js' &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  });
+// Initialize all models and attach them to sequelize instance
+await initModels(sequelize);
 
-for (const file of files) {
-  const filePath = path.join(__dirname, file);
-  const fileUrl = pathToFileURL(filePath).href;
-  const modelModule = await import(fileUrl);
-  const model = modelModule.default(sequelize, DataTypes);
-  db[model.name] = model;
-}
+// Initialize associations
+initAssociations(sequelize.models);
 
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
-});
-
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
-
-export default db;
+// Export sequelize instance with models attached
+// Now you can use: db.query(), db.User, db.Post, etc.
+export { sequelize as db };
