@@ -13,7 +13,11 @@
     "#@services/*": "./src/services/*"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "cross-env NODE_OPTIONS=\"--experimental-vm-modules -r dotenv/config\" mocha 'test/**/*.test.js' --timeout 30000",
+    "test:integration": "cross-env NODE_OPTIONS=\"--experimental-vm-modules -r dotenv/config\" mocha 'test/**/*.integration.test.js' --timeout 30000",
+    "test:integration:debug": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --inspect-brk -r dotenv/config\" mocha 'test/**/*.integration.test.js' --timeout 30000",
+    "test:unit": "cross-env NODE_OPTIONS=\"--experimental-vm-modules -r dotenv/config\" mocha 'test/**/*.unit.test.js' --timeout 10000",
+    "test:unit:debug": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --inspect-brk -r dotenv/config\" mocha 'test/**/*.unit.test.js' --timeout 10000",
     "dev": "node -r dotenv/config --watch --inspect src/index.js",
     "start": "node -r dotenv/config src/index.js",
     "type-check": "tsc -p .",
@@ -46,10 +50,13 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
-    "sequelize-cli": "^6.6.3"
+    "@types/mocha": "^10.0.10",
+    "chai": "^5.1.2",
+    "cross-env": "^10.1.0",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
+    "mocha": "^11.0.1",
     "prettier": "^3.6.2",
     "sequelize-cli": "^6.6.3",
     "typescript": "^5.9.3"

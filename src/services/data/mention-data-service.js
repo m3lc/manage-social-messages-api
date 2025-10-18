@@ -162,9 +162,8 @@ export class MentionDataService {
         where "code" = 'REPLY_MENTION'
         and "data"->>'mentionId' = '${mentionId}'
         and "finishedAt" is null
-        and "startedAt" >= NOW() - INTERVAL '${SOCIAL_MEDIA_API_TASK_REPLY_INTERVAL}'
+        and "startedAt" < NOW() - INTERVAL '${SOCIAL_MEDIA_API_TASK_REPLY_INTERVAL}'
       `);
-
       task = await this.db.Task.create({
         code: taskTypes.REPLY_MENTION,
         startedAt: now,
@@ -176,22 +175,19 @@ export class MentionDataService {
         },
       });
     } catch (error) {
-      if (error.name === 'SequelizeUniqueConstraintError') {
-        // however a task with type REPLY and data->'isIgnored' set to true will be added
-        // to keep track of the attempts of replying to a mention that has already been replied to
-        task = await this.db.Task.create({
-          code: taskTypes.REPLY_MENTION,
-          startedAt: now,
-          finishedAt: now,
-          createdBy: reqUser.email,
-          data: {
-            mentionId,
-            content,
-            isIgnored: true,
-            reqUser: JSON.stringify(reqUser),
-          },
-        });
-      }
+      // however a task with type REPLY and data->'isIgnored' set to true will be added
+      // to keep track of the attempts of replying to a mention that has already been replied to
+      task = await this.db.Task.create({
+        code: taskTypes.REPLY_MENTION_IGNORED,
+        startedAt: now,
+        finishedAt: now,
+        createdBy: reqUser.email,
+        data: {
+          mentionId,
+          content,
+          reqUser: JSON.stringify(reqUser),
+        },
+      });
     }
 
     await this._processReplyTask({ task });
