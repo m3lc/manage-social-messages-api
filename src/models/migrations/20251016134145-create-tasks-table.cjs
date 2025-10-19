@@ -54,6 +54,14 @@ module.exports = {
       `,
         { transaction }
       );
+
+      // create unique partial index to avoid duplicate content on the same mention
+      await queryInterface.sequelize.query(
+        `
+        CREATE UNIQUE INDEX tasks_code_data_mentionid_content_idx ON tasks(code, (data->>'mentionId'), (data->>'content')) WHERE code = 'REPLY_MENTION';
+      `,
+        { transaction }
+      );
     });
   },
 
