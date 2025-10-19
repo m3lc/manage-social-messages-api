@@ -29,7 +29,7 @@ export class AuditDataService {
    * @param {Object} params
    * @param {string} params.event - Event name/type
    * @param {Object} [params.data] - Additional data to store
-   * @param {string} [params.createdBy] - User ID who created the audit
+   * @param {string} [params.createdBy] - User email who created the audit
    * @param {Object} [params.transaction] - Database transaction object
    * @returns {Promise<Object>} Created audit record
    */

@@ -157,21 +157,45 @@ export class MentionCommentAdapter extends BaseMentionAdapter {
           type: this.db.QueryTypes.DELETE,
         }
       );
-      task = await this.db.Task.create({
-        code: taskTypes.REPLY_MENTION,
-        startedAt: now,
-        createdBy: reqUser.email,
-        data: {
-          mentionId,
-          content,
-          reqUser: JSON.stringify(reqUser),
-        },
+
+      await this.db.transaction(async (transaction) => {
+        task = await this.db.Task.create(
+          {
+            code: taskTypes.REPLY_MENTION,
+            startedAt: now,
+            createdBy: reqUser.email,
+            data: {
+              mentionId,
+              content,
+              reqUser: JSON.stringify(reqUser),
+            },
+          },
+          { transaction }
+        );
+        await this.auditDataService.audit({
+          event: mentionStates.REPLY_ATTEMPT,
+          data: {
+            mentionId: mention.id,
+            taskId: task.id,
+          },
+          createdBy: reqUser.email,
+          transaction,
+        });
+
+        await mention.update(
+          {
+            state: mentionStates.REPLY_ATTEMPT,
+          },
+          { transaction }
+        );
       });
+
+      await this._processReplyTask({ task });
     } catch (error) {
       logger.error('Error creating reply task', error);
       // however a task with type REPLY and data->'isIgnored' set to true will be added
       // to keep track of the attempts of replying to a mention that has already been replied to
-      task = await this.db.Task.create({
+      await this.db.Task.create({
         code: taskTypes.REPLY_MENTION_IGNORED,
         startedAt: now,
         finishedAt: now,
@@ -183,8 +207,6 @@ export class MentionCommentAdapter extends BaseMentionAdapter {
         },
       });
     }
-
-    await this._processReplyTask({ task });
   }
 
   /**
@@ -288,19 +310,6 @@ export class MentionCommentAdapter extends BaseMentionAdapter {
         logger.warn(`Mention ${task.data.mentionId} not found for task ${task.id}`);
         return;
       }
-
-      await this.auditDataService.audit({
-        event: mentionStates.REPLY_ATTEMPT,
-        data: {
-          mentionId: mention.id,
-          taskId: task.id,
-        },
-        createdBy: String(parsedReqUser.id),
-      });
-
-      await mention.update({
-        state: mentionStates.REPLY_ATTEMPT,
-      });
 
       await this.db.transaction(async (transaction) => {
         const result = await this.socialMediaService.replyComment({

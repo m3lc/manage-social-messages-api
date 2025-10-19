@@ -108,7 +108,7 @@ export class MentionDataService {
           mentionId,
           ...data,
         },
-        createdBy: String(reqUser.id),
+        createdBy: reqUser.email,
       });
     } else if (mention.userId && data.userId === null) {
       data.state = null;
