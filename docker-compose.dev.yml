@@ -1,0 +1,54 @@
+version: '3.8'
+
+# Development-specific overrides
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Or: make dev
+# Or: npm run docker:dev
+
+# HOW IT WORKS:
+# 1. You edit files on your local machine (Windows) in VS Code
+# 2. Files are mounted into container via volumes (synced in real-time)
+# 3. Node.js inside container detects changes via --watch flag
+# 4. App auto-restarts with new code
+# 5. You see output in docker-compose logs
+# 6. Optional: Attach VS Code debugger to port 9229
+
+services:
+  db:
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts with local PostgreSQL
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: social-messages-api-dev
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    volumes:
+      # IMPORTANT: These mount your LOCAL files into the container
+      # When you edit src/index.js on Windows, it changes /app/src/index.js in container
+      # The :ro flag means read-only (container can't modify your local files)
+      - ./src:/app/src:ro              # Your code → live in container
+      - ./test:/app/test:ro            # Your tests → live in container
+      
+      # node_modules stays in container (not synced from local machine)
+      # This is faster and avoids OS-specific binary issues
+      - node_modules:/app/node_modules
+    ports:
+      - "3000:3000"   # API server
+      - "9229:9229"   # Debug port (attach VS Code debugger here)
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        echo 'Running migrations...' &&
+        npm run db:migrate &&
+        echo 'Starting dev server with hot reload...' &&
+        echo 'Edit files on your machine, changes auto-reload!' &&
+        npm run dev
+      "
+
+volumes:
+  node_modules:

@@ -26,11 +26,19 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "npx --node-options=\"-r dotenv/config\" sequelize-cli db:migrate --config ./src/models/config.js --migrations-path ./src/models/migrations",
+    "db:migrate:docker": "npx sequelize-cli db:migrate --config ./src/models/config.js --migrations-path ./src/models/migrations",
     "db:migrate:undo": "npx --node-options=\"-r dotenv/config\" sequelize-cli db:migrate:undo --config ./src/models/config.js --migrations-path ./src/models/migrations",
     "db:migrate:gen": "npx --node-options=\"-r dotenv/config\" sequelize-cli migration:generate --migrations-path ./src/models/migrations --config ./src/models/config.js --name",
     "db:seed": "npx --node-options=\"-r dotenv/config\" sequelize-cli db:seed:all --config ./src/models/config.js --seeders-path ./src/models/seeders",
     "db:seed:undo": "npx --node-options=\"-r dotenv/config\" sequelize-cli db:seed:undo --config ./src/models/config.js --seeders-path ./src/models/seeders",
-    "db:seed:gen": "npx --node-options=\"-r dotenv/config\" sequelize-cli seed:generate --seeders-path ./src/models/seeders --config ./src/models/config.js --name"
+    "db:seed:gen": "npx --node-options=\"-r dotenv/config\" sequelize-cli seed:generate --seeders-path ./src/models/seeders --config ./src/models/config.js --name",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:build": "docker-compose build",
+    "docker:restart": "docker-compose restart",
+    "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
+    "docker:clean": "docker-compose down -v"
   },
   "keywords": [],
   "author": "",
@@ -47,6 +55,7 @@
     "nanoid": "^5.1.6",
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
+    "sequelize-cli": "^6.6.3",
     "winston": "^3.18.3"
   },
   "devDependencies": {
@@ -58,7 +67,6 @@
     "eslint-plugin-prettier": "^5.5.4",
     "mocha": "^11.0.1",
     "prettier": "^3.6.2",
-    "sequelize-cli": "^6.6.3",
     "typescript": "^5.9.3"
   }
 }
