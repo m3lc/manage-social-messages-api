@@ -21,6 +21,7 @@ A robust Node.js service for ingesting and managing social media comments across
 This service ingests comments from social media posts across multiple platforms (configurable via `SOCIAL_PLATFORMS`) within a configurable time period (`SOCIAL_MEDIA_API_HISTORY_LAST_DAYS`). It enables team collaboration on responses and ensures reliable, exactly-once reply delivery even under concurrent load and system failures.
 
 **Technology Stack:**
+
 - **Backend:** Node.js 22+ with Express
 - **Database:** PostgreSQL 14+
 - **External API:** Ayrshare Social Media API
@@ -173,6 +174,7 @@ npm run docker:clean
 The service is configured via environment variables, which can be set in a `.env` file at the project root.
 
 **Configuration Files:**
+
 - `.env.sample` - Template with all available variables and descriptions
 - `.env` - Your local configuration (create from `.env.sample`)
 - `.env.docker` - Docker-specific configuration
@@ -374,7 +376,7 @@ Platform-specific comment parsing:
 - **Incomplete Platform Support:** `/history/:platform` returns 404 for some platforms (e.g., Bluesky)
 - **Direct Messages Inaccessible:** `/messages/:platform` returns 403 (not available in current API tier)
 - **Query Parameter Limitations:** `platforms` parameter doesn't accept arrays consistently
-- **Path Parameter Inconsistency:** Multiple values not supported uniformly across endpoints
+- **Path Parameter Inconsistency:** Multiple values not supported uniformly across endpoints; some path param values need additional query params in order to work
 
 ### Platform-Specific Issues
 
@@ -394,55 +396,15 @@ Platform-specific comment parsing:
 - **Polling vs. Webhooks:**
   - Currently uses polling (Ayrshare doesn't provide webhooks)
   - Increases API calls and latency
-- **Bulk Insert Safety:**
-  - Uses `db.escape()` instead of Sequelize `bulkCreate()` for additional SQL injection protection
 
 ## Roadmap
 
-### Short-term (Next Release)
-
 - [ ] Add direct message support (pending API access)
 - [ ] Implement request validation middleware (`express-validator`)
-- [ ] Add controller-level error handling
-- [ ] Extract magic numbers to centralized configuration
+- [ ] Add controller level error handling
 - [ ] Add API rate limiting middleware
-- [ ] Implement platform-specific reply detection handlers
-
-### Medium-term
-
 - [ ] Replace polling with webhooks (when available from Ayrshare)
 - [ ] Add comprehensive unit test coverage
 - [ ] Implement OpenAPI/Swagger documentation
-- [ ] Add Redis caching layer for improved performance
-- [ ] Support custom reply templates
 - [ ] Split mention adapters into fetch and reply interfaces
-- [ ] Store reply identification data from all platforms
-
-### Long-term
-
-- [ ] Multi-tenancy support
-- [ ] Advanced analytics dashboard
-- [ ] AI-powered reply suggestions
-- [ ] Custom workflow automation
-- [ ] Sentiment analysis integration
-- [ ] Real-time collaboration features
-
----
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-[Specify your license here]
-
-## Support
-
-For issues, questions, or contributions, please [open an issue](https://github.com/yourusername/manage-social-messages-api/issues) on GitHub.
+- [ ] Store additional info in tasks
