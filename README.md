@@ -1,251 +1,448 @@
-# manage-social-messages-api
+# Manage Social Messages API
 
-1. Description
+A robust Node.js service for ingesting and managing social media comments across multiple platforms. Built with reliability patterns including transactional outbox, distributed circuit breakers, and exactly-once reply guarantees.
 
-This is a service that fetches comments of the social media posts submitted within a period (controlled by environment variable SOCIAL_MEDIA_API_HISTORY_LAST_DAYS) from each social platform (controlled by environment variable SOCIAL_PLATFORMS), using the social media api of Ayrshare.
+## Table of Contents
 
-2. How It Works
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [How It Works](#how-it-works)
+- [Prerequisites](#prerequisites)
+- [Setup and Installation](#setup-and-installation)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+- [Database Schema](#database-schema)
+- [Known Issues](#known-issues)
+- [Roadmap](#roadmap)
 
-The service works as follows,
+## Overview
 
-- Fetches comments of the posts created in the past week from each social platform, using the social media api.
-- Stores the comments in the database, that don't already exist.
-- Uses background tasks (transaction outbox pattern) to process fetching of comments to,
-  - Track processing of comments.
-  - Support eventual consistency in case the system is interrupted.
-  - Prevent fetching comments of the same posts concurrently, to avoid redundant processing.
-- When a user replies to a comment, the service creates a background task (transaction outbox pattern) and processes it. In order to track processing and support eventual consistency. Also ensuring no other task is created at the same time for the same post. Preventing redundant replies and duplication.
-- The service calls external social media api (Ayrshare) to interact with the social platforms.
-- All calls are targeting specific platform and use dedicated http handlers with exponential backoff retrying and circuit breaker logic.
-- Circuit breaker logic follows a distributed pattern, using the database to store the state.
+This service ingests comments from social media posts across multiple platforms (configurable via `SOCIAL_PLATFORMS`) within a configurable time period (`SOCIAL_MEDIA_API_HISTORY_LAST_DAYS`). It enables team collaboration on responses and ensures reliable, exactly-once reply delivery even under concurrent load and system failures.
 
-3. Features and Requirements
+**Technology Stack:**
+- **Backend:** Node.js 22+ with Express
+- **Database:** PostgreSQL 14+
+- **External API:** Ayrshare Social Media API
+- **Logging:** Winston
+- **ORM:** Sequelize
 
-- Applies transactional outbox pattern when fetching data and replying to comments. Ensuring caching, single processing during concurrent actions and eventually consistency in case of interrupt. Also tracking of actions, storing data for tracing and durations.
-- Uses distributed circuit breaker logic per social platform, using the database to store the state.
-- Applies exponential backoff retrying, following http status codes, with appropriate logging and combined with the circuit breaker functionality.
+## Key Features
 
-Requirements
+### Multi-Platform Message Ingestion
 
-1. Ingest messages and comments
-   Supports fetching data from social media api of Ayrshare and transforming it into a common format of "mentions". Uses adapter pattern to transform data from each type of data (comments, messages) into a common format.
-   Polls for comments of the posts created in the past week (controlled by environment variable SOCIAL_MEDIA_API_HISTORY_LAST_DAYS) from each social platform (controlled by environment variable SOCIAL_PLATFORMS), using the social media api.
-   Stores the comments in the database, that don't already exist.
-   Uses background tasks (transaction outbox pattern) to process fetching of comments to,
+- **Platform Support:** Fetches comments from multiple social platforms via Ayrshare API
+- **Unified Data Model:** Uses adapter pattern to normalize platform-specific data into a common "mentions" format
+- **Configurable Polling:** Retrieves posts from the past N days (default: 7 days)
+- **Smart Deduplication:** Prevents duplicate ingestion using platform-specific identifiers
+- **Task-Based Processing:** Ensures tracking, eventual consistency, and prevents concurrent processing of the same posts
 
-- Track processing of comments.
-- Support eventual consistency in case the system is interrupted.
-- Prevent fetching comments of the same posts concurrently, to avoid redundant processing.
+### Team Triage & Assignment
 
-2. Triage & assignment
-   Supports assigning mentions to users and setting disposition values.
+- **User Assignment:** Assign mentions to specific team members
+- **Disposition Management:** Set disposition values (reply, ignore, escalate)
+- **State Tracking:** Monitor mention states (assignment, reply_attempt, provider_error, replied)
 
-3. Reply once and only once
-   The service supports different statuses of mentions as they are being processed.
-4. Dedup + idempotency
-   Supports idempotency and deduplication, by allowing only a single reply per mention with unique content.
-   Meeting the requirements of concurrent interactions with the same mention.
+### Exactly-Once Reply Guarantee
 
-5. Rate limits, backoff, and resilience
-   Supports rate limiting around processing redundant actions and excessive http requests to the external services.
-   Includes exponential backoff for 429 and 5xx type of errors.
-   Includes distributed circuit breaker logic per social platform, using the database to store the state.
-   Includes observability through structured logs, tracing actions in database and providing health endpoint.
-6. Auditability
-   Supports auditability through immutable audit log with actor, timestamp, and payload excerpt.
-   ○ Every state change (assignment, reply attempt, provider error) is written to
-   an immutable audit log with actor, timestamp, and payload excerpt.
+- **Idempotency:** Database-level constraints prevent duplicate replies
+- **Transactional Outbox Pattern:** Reliable message processing with failure recovery
+- **Concurrent Safety:** Handles multiple simultaneous reply attempts gracefully
+- **Test Verified:** Automated tests confirm 5 concurrent replies → 1 actual reply sent
 
-7. Pre-requisites
+### Resilience & Observability
 
-- Node.js 22+
-- PostgresSQL 14+
-- Ayrshare API Key
+- **Distributed Circuit Breaker:** Per-platform protection against cascading failures (database-backed for multi-instance coordination)
+- **Exponential Backoff:** Smart retry logic for 429/5xx errors with jitter
+- **Structured Logging:** Request tracing and metrics via Winston
+- **Health Monitoring:** Endpoints expose circuit breaker states and system health
+- **Performance Metrics:** Track duration of external API calls
 
-5. Setup and Running
-   There are two ways to setup the project,
+### Auditability
 
-- setting up the database and running using npm
-- using docker
+- **Immutable Audit Log:** Records all state changes
+- **Complete Context:** Captures actor (user ID), timestamp, and payload excerpts
+- **End-to-End Traceability:** Full audit trail from mention creation to reply delivery
 
-  4.1 Setting up the database and running using npm
+## How It Works
 
-First, create the database and user.
+1. **Ingestion:** Service polls Ayrshare API for comments from recent posts across configured platforms
+2. **Normalization:** Adapter pattern transforms platform-specific data into unified mention format
+3. **Storage:** Comments are stored in PostgreSQL with deduplication
+4. **Task Management:** Transactional outbox pattern creates tasks for asynchronous processing
+5. **Team Workflow:** Users assign, categorize, and respond to mentions via API
+6. **Reply Processing:** When a user replies, a task is created and processed with idempotency guarantees
+7. **External API Calls:** All social platform interactions use HTTP decorators with retry logic and circuit breakers
+8. **State Coordination:** Database-backed circuit breakers coordinate across multiple service instances
 
-```bash
+## Prerequisites
+
+- **Node.js** 22 or higher
+- **PostgreSQL** 14 or higher
+- **Ayrshare API Key** (obtain from [Ayrshare](https://www.ayrshare.com/))
+
+## Setup and Installation
+
+There are two ways to set up the project:
+
+### Option 1: Manual Setup
+
+#### 1. Create Database and User
+
+Connect to PostgreSQL and run:
+
+```sql
 CREATE USER social_messages WITH PASSWORD 'social_messages';
 CREATE DATABASE social_messages OWNER social_messages;
 GRANT ALL PRIVILEGES ON DATABASE social_messages TO social_messages;
 ```
 
-Navigate to the project root directory and run installation of all dependencies,
+#### 2. Install Dependencies
+
+Navigate to the project root directory:
 
 ```bash
 npm install
 ```
 
-Afterwards run database migration scripts,
+#### 3. Configure Environment
+
+Copy the sample environment file and configure it:
+
+```bash
+cp .env.sample .env
+```
+
+Edit `.env` with your configuration (see [Configuration](#configuration) section).
+
+#### 4. Run Database Migrations
 
 ```bash
 npm run db:migrate
 ```
 
-To run in development mode, with watch and debugger support,
+#### 5. Start the Service
+
+**Development mode** (with watch and debugger support):
 
 ```bash
 npm run dev
 ```
 
-To start the service in production mode, run,
+**Production mode:**
 
 ```bash
-npm run start
+npm start
 ```
 
-5.2 Using docker
-Navigate to the project root directory and run,
+### Option 2: Docker Setup
+
+#### Quick Start
+
+Navigate to the project root directory:
 
 ```bash
+# Start all services (API + PostgreSQL)
 docker-compose up -d
-```
 
-To start the service in production mode, run,
+# View logs
+docker-compose logs -f
 
-```bash
-docker-compose up
-```
-
-To stop the service, run,
-
-```bash
+# Stop services
 docker-compose down
 ```
 
-To view the logs, run,
+#### Available Docker Commands
 
 ```bash
-docker-compose logs -f
+# Development mode (with volume mounts for hot reload)
+npm run docker:dev
+
+# Build images
+npm run docker:build
+
+# Restart services
+npm run docker:restart
+
+# Clean up (removes volumes - destructive)
+npm run docker:clean
 ```
 
-6. Configuration
+## Configuration
 
-The service uses environment variables to configure the service.
+The service is configured via environment variables, which can be set in a `.env` file at the project root.
 
-The environment variables can be configured in the .env file.
+**Configuration Files:**
+- `.env.sample` - Template with all available variables and descriptions
+- `.env` - Your local configuration (create from `.env.sample`)
+- `.env.docker` - Docker-specific configuration
 
-To view the environment variables, visit the .env.sample file.
+**Key Environment Variables:**
 
-7. Project Structure
-   src/
-   ├── controllers/ # HTTP request handlers
-   ├── services/
-   │ ├── data/ # Business logic & data access
-   │ │ └── mention/ # Mention-specific logic
-   │ ├── social-media/ # External API integration
-   │ ├── http/ # HTTP service and decorators (retry, logging)
-   │ └── utils/ # Utilities (logger, circuit-breaker)
-   ├── models/ # ORM (Sequelize) models
-   ├── routes/ # Express routes
-   ├── middleware/ # Auth handling
-   └── enums/ # Constants/Enumerations
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SOCIAL_PLATFORMS` | Comma-separated list of platforms to monitor | `facebook,twitter,instagram` |
+| `SOCIAL_MEDIA_API_HISTORY_LAST_DAYS` | Number of days to fetch historical posts | `7` |
+| `AYRSHARE_API_KEY` | Your Ayrshare API key | `your-api-key-here` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/dbname` |
+| `JWT_SECRET` | Secret for JWT authentication | `your-secret-key` |
+| `LOG_LEVEL` | Winston log level | `info` |
 
-8. Database
+Refer to `.env.sample` for a complete list of configuration options.
 
-9. Architecture
-   The system implements several distributed system patterns:
-   ┌─────────────┐
-   │ Client │
-   └──────┬──────┘
-   │
-   ▼
-   ┌─────────────────────────────────────┐
-   │ Express API (Controllers) │
-   └──────┬──────────────────────────────┘
-   │
-   ▼
-   ┌─────────────────────────────────────┐
-   │ Service Layer (Business Logic) │
-   │ - MentionDataService │
-   │ - UserDataService │
-   └──────┬──────────────────────────────┘
-   │
-   ▼
-   ┌─────────────────────────────────────┐
-   │ Adapter Pattern │
-   │ - MentionCommentAdapter │
-   │ - (Future: MentionMessageAdapter) │
-   └──────┬──────────────────────────────┘
-   │
-   ▼
-   ┌─────────────────────────────────────┐
-   │ Social Media Service Layer │
-   │ - Circuit Breaker (per platform) │
-   │ - Exponential Backoff Retry │
-   │ - HTTP Logging & Monitoring │
-   └──────┬──────────────────────────────┘
-   │
-   ▼
-   ┌─────────────────────────────────────┐
-   │ External Social Media APIs │
-   └─────────────────────────────────────┘
+## Project Structure
 
-Key Patterns
+```
+manage-social-messages-api/
+├── src/
+│   ├── controllers/           # HTTP request handlers (thin layer)
+│   │   ├── mention-controller.js
+│   │   ├── user-controller.js
+│   │   └── status-controller.js
+│   ├── services/              # Business logic & external integrations
+│   │   ├── data/              # Domain services
+│   │   │   ├── mention/       # Mention-specific logic
+│   │   │   │   ├── base-mention-adapter.js
+│   │   │   │   ├── mention-comment-adapter.js
+│   │   │   │   └── mention-data-service.js
+│   │   │   ├── audit-data-service.js
+│   │   │   └── user-data-service.js
+│   │   ├── social-media/      # External API integration
+│   │   │   └── social-media-service.js
+│   │   ├── http/              # HTTP service decorators
+│   │   │   ├── index.js
+│   │   │   ├── with-logging.js
+│   │   │   └── with-retry.js
+│   │   └── utils/             # Shared utilities
+│   │       ├── circuit-breaker.js
+│   │       ├── exponential-backoff.js
+│   │       ├── logger/
+│   │       └── sleep.js
+│   ├── models/                # Sequelize ORM models
+│   │   ├── migrations/        # Database migrations
+│   │   ├── mention.js
+│   │   ├── task.js
+│   │   ├── user.js
+│   │   └── audit.js
+│   ├── routes/                # Express routing
+│   │   ├── mention-routes.js
+│   │   ├── user-routes.js
+│   │   └── status-routes.js
+│   ├── middleware/            # Express middleware
+│   │   └── auth.js
+│   ├── enums/                 # Constants & enumerations
+│   │   ├── mention-types.js
+│   │   ├── mention-states.js
+│   │   ├── task-types.js
+│   │   └── platforms.js
+│   ├── config.js              # Environment configuration
+│   └── index.js               # Application entry point
+├── test/                      # Test suite
+│   └── services/
+│       └── data/
+│           └── mention-data-service.integration.test.js
+├── docker-compose.yml         # Docker orchestration
+├── Dockerfile                 # Production container
+├── Dockerfile.dev             # Development container
+├── package.json               # Dependencies & scripts
+└── README.md                  # This file
+```
 
-- Transactional Outbox Pattern
-  Ensures eventual consistency and prevents duplicate processing:
+### Layer Responsibilities
 
-Creates task records in database
-Background processors handle tasks asynchronously
-Unique constraints prevent concurrent processing of same entity
+- **Controllers:** Handle HTTP requests/responses, input validation
+- **Services:** Implement business logic and coordinate operations
+- **Models:** Define data schemas and handle database operations
+- **Routes:** Map HTTP endpoints to controllers
+- **Middleware:** Cross-cutting concerns (auth, logging, error handling)
+- **Enums:** Centralized constants for type safety
 
-- Distributed Circuit Breaker
-  Protects against cascading failures:
+## Architecture
 
-Per-platform circuit breaker state
-Stored in database for multi-instance coordination.
+### System Architecture Diagram
 
-- Adapter Pattern
-  Extensible mention type handling:
+```
+┌─────────────┐
+│   Client    │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────────────────────┐
+│   Express API (Controllers)         │
+└──────┬──────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────┐
+│   Service Layer (Business Logic)    │
+│   - MentionDataService               │
+│   - UserDataService                  │
+│   - AuditDataService                 │
+└──────┬──────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────┐
+│   Adapter Pattern                    │
+│   - MentionCommentAdapter            │
+│   - (Future: MentionMessageAdapter)  │
+└──────┬──────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────┐
+│   Social Media Service Layer         │
+│   - Circuit Breaker (per platform)   │
+│   - Exponential Backoff Retry        │
+│   - HTTP Logging & Monitoring        │
+└──────┬──────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────┐
+│   External Social Media APIs         │
+│   (via Ayrshare)                     │
+└─────────────────────────────────────┘
+```
 
-BaseMentionAdapter
-defines contract
-Each mention type (comment, message, DM) has dedicated adapter
-Easy to add new mention types
+### Design Patterns
 
-- Decorator Pattern for HTTP
-  Composable HTTP enhancements:
+#### 1. Transactional Outbox Pattern
 
-javascript
+Ensures eventual consistency and prevents duplicate processing:
+
+- Creates task records in database transactions
+- Background processors handle tasks asynchronously
+- Unique constraints prevent concurrent processing of same entity
+- Survives system crashes and network failures
+
+#### 2. Distributed Circuit Breaker
+
+Protects against cascading failures:
+
+- Per-platform circuit breaker state stored in database
+- Coordinates across multiple service instances
+- Automatic recovery after configurable timeout
+- Prevents resource exhaustion from failing downstream services
+
+#### 3. Adapter Pattern
+
+Extensible mention type handling:
+
+- `BaseMentionAdapter` defines contract for all mention types
+- Each mention type (comment, message, DM) has dedicated adapter
+- Easy to add new mention types without modifying core logic
+- Normalizes platform-specific data into unified format
+
+#### 4. Decorator Pattern
+
+Composable HTTP enhancements:
+
+```javascript
 withLogging(baseHttp) → exponentialBackoff → circuitBreaker → axios
-Project Structure
+```
 
-10. Known Issues
+Each decorator adds a specific concern (logging, retry, circuit breaking) without modifying the base HTTP client.
 
-- It currently works only for Ayrshare posts, not all posts could be retrieved from the social media API because /history/:platform gives 404 for some eg bluesky. Also the query param "platforms" does not accept array.
-- No messages could be retrieved from the social media API. The endpoint /messages/:platform gives 403.
-- I would prefer if path params didn't support multiple values only if combined with query params. Instead just use the query params directly.
-- X/Twitter comments include replies on the same level.
-- From UI when hitting the social platform tag of bluesky for a post it does not show the post, because of the user value which is the email instead of the bsk handle.
-- When replying to a comment and the call to social media api succeeds, but the service fails to record the success, could result in eventually replying more than once. The reason is that after the system comes back up and tries to process unfinished tasks, the social media api might not return the reply data yet due to cache.
-- Twitter's different comments structure, not having replies, but instead treating all as comments shifts parsing logic to the calling service. There is a TODO to check if the same reply has been sent already to the social media api using specific parsing comment handlers per platform.
+#### 5. Strategy Pattern
 
-Platform-Specific Issues
+Platform-specific comment parsing:
 
-- Bluesky: /history endpoint returns 404 for some posts
-- Twitter: Comments include replies at same level (parsing required)
-- All: /messages endpoint returns 403
-  Edge Cases
-- Reply success but failure to record: May cause duplicate reply on retry
-- Mitigation: Check if reply exists before sending (TODO)
-  API Limitations
-- Path params don't support multiple values consistently
-- Query param "platforms" doesn't accept arrays
+- Dedicated handlers for each social platform
+- Handles platform-specific quirks (e.g., Twitter's flat comment structure)
+- Isolates platform differences from core business logic
 
-11. TODO
+## Database Schema
 
-- Add support for messages.
-- Identify replies from all social platforms, using dedicated parsing handlers per platform and store to db for display.
-- Add better validation of input data eg type of data as well as logic around updates.
-- Add rate limiting excessive http requests to the service.
-- Split mentions adapters to fetch and reply based interfaces.
-- Optimize according to next possible update indicated by the social media api.
+### Key Tables
+
+| Table | Description |
+|-------|-------------|
+| `mentions` | Social media mentions/comments with platform metadata |
+| `tasks` | Outbox pattern task queue for async operations |
+| `users` | User accounts and authentication data |
+| `audits` | Immutable audit trail of all state changes |
+| `circuit_breaker_states` | Distributed circuit breaker coordination |
+
+### Entity Relationships
+
+- `mentions` ← many-to-one → `users` (assigned_to)
+- `tasks` ← many-to-one → `mentions` (for reply tasks)
+- `audits` ← many-to-one → `mentions` (audit trail)
+- `audits` ← many-to-one → `users` (actor)
+
+## Known Issues
+
+### Ayrshare API Constraints
+
+- **Incomplete Platform Support:** `/history/:platform` returns 404 for some platforms (e.g., Bluesky)
+- **Direct Messages Inaccessible:** `/messages/:platform` returns 403 (not available in current API tier)
+- **Query Parameter Limitations:** `platforms` parameter doesn't accept arrays consistently
+- **Path Parameter Inconsistency:** Multiple values not supported uniformly across endpoints
+
+### Platform-Specific Issues
+
+- **Twitter/X:**
+  - Comments include replies at the same hierarchical level (requires client-side filtering)
+  - Shifts parsing logic to the consuming service
+- **Bluesky:**
+  - User identifier is email instead of Bluesky handle, breaking UI links to posts
+  - Some posts return 404 from history endpoint
+
+### Edge Cases & Limitations
+
+- **Reply Verification Race Condition:**
+  - If reply succeeds externally but service fails to record success, may cause duplicate reply on retry
+  - Root cause: Ayrshare API cache delay prevents immediate verification
+  - **Mitigation (TODO):** Implement platform-specific reply detection before sending
+- **Polling vs. Webhooks:**
+  - Currently uses polling (Ayrshare doesn't provide webhooks)
+  - Increases API calls and latency
+- **Bulk Insert Safety:**
+  - Uses `db.escape()` instead of Sequelize `bulkCreate()` for additional SQL injection protection
+
+## Roadmap
+
+### Short-term (Next Release)
+
+- [ ] Add direct message support (pending API access)
+- [ ] Implement request validation middleware (`express-validator`)
+- [ ] Add controller-level error handling
+- [ ] Extract magic numbers to centralized configuration
+- [ ] Add API rate limiting middleware
+- [ ] Implement platform-specific reply detection handlers
+
+### Medium-term
+
+- [ ] Replace polling with webhooks (when available from Ayrshare)
+- [ ] Add comprehensive unit test coverage
+- [ ] Implement OpenAPI/Swagger documentation
+- [ ] Add Redis caching layer for improved performance
+- [ ] Support custom reply templates
+- [ ] Split mention adapters into fetch and reply interfaces
+- [ ] Store reply identification data from all platforms
+
+### Long-term
+
+- [ ] Multi-tenancy support
+- [ ] Advanced analytics dashboard
+- [ ] AI-powered reply suggestions
+- [ ] Custom workflow automation
+- [ ] Sentiment analysis integration
+- [ ] Real-time collaboration features
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+[Specify your license here]
+
+## Support
+
+For issues, questions, or contributions, please [open an issue](https://github.com/yourusername/manage-social-messages-api/issues) on GitHub.
