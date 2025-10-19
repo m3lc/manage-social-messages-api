@@ -1,6 +1,6 @@
 // @ts-check
 
-import { MentionDataService } from '#@services/data/mention-data-service.js';
+import { MentionDataService } from '#@services/data/mention/mention-data-service.js';
 
 export class MentionController {
   constructor(service) {

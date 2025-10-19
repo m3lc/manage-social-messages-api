@@ -12,7 +12,6 @@ import { circuitBreaker, CIRCUIT_STATE } from '#@services/utils/circuit-breaker.
 import { exponentialBackoff } from '#@services/utils/exponential-backoff.js';
 import { createLogger } from '#@services/utils/logger/index.js';
 import { db as dbInstance } from '#@models/index.js';
-import mentionTypes from '#@enums/mention-types.js';
 
 const logger = createLogger(import.meta.url);
 
@@ -154,38 +153,29 @@ export class SocialMediaService {
     // TODO: check if the same reply has been sent already to the social media api
     // needs to use specific comments handlers per platform, to identify comments and replies
 
-    const response = await this.httpRequest({
-      reqUser,
-      platform: mention.platform,
-      url: `/comments/${encodeURIComponent(mention.socialMediaPlatformRef)}/reply`,
-      method: 'post',
-      data: {
-        comment: content,
-        platforms: [mention.platform],
-        searchPlatformId: true,
-      },
-    });
-
-    if (response.data?.success) {
-      const replyData = response.data[mention.platform];
-      // create a mention attached to the original mention
-      await this.db.Mention.create(
-        {
-          content: replyData.comment,
-          socialMediaPlatformRef: replyData.commentId,
-          socialMediaAPIPostRef: mention.socialMediaAPIPostRef,
-          platform: mention.platform,
-          type: mentionTypes.REPLY,
+    try {
+      const response = await this.httpRequest({
+        reqUser,
+        platform: mention.platform,
+        url: `/comments/reply/${encodeURIComponent(mention.socialMediaPlatformRef)}`,
+        method: 'post',
+        options: {
           data: {
-            socialMediaPayload: response.data,
+            comment: content,
+            platforms: [mention.platform],
+            searchPlatformId: true,
           },
-          mentionId: mention.id,
         },
-        { transaction }
-      );
-    }
+      });
 
-    return response.data;
+      return response.data;
+    } catch (error) {
+      logger.error(`replyComment - failed for mentionId: ${mention.id}`, error);
+      return {
+        status: 'error',
+        error: error.message,
+      };
+    }
   }
 
   /**
@@ -224,10 +214,10 @@ export class SocialMediaService {
    * @param {string} [params.platform] - Social media platform
    * @param {string} params.url
    * @param {string} [params.method]
-   * @param {Object} [params.data] - Request data including body, headers, and other axios config options
+   * @param {Object} [params.options] - Request data including body, headers, and other axios config options
    * @returns {Promise<Object>} HTTP response
    */
-  async httpRequest({ reqUser, platform = 'default', url, method = 'get', data = {} }) {
+  async httpRequest({ reqUser, platform = 'default', url, method = 'get', options = {} }) {
     const httpHandler = this.httpHandlers[platform];
 
     if (!httpHandler) {
@@ -241,10 +231,10 @@ export class SocialMediaService {
     try {
       const response = await httpHandler(() => {
         return this.http(`${SOCIAL_MEDIA_API_URL}${url}`, {
-          ...data,
+          ...options,
           method,
           headers: {
-            ...(data.headers || {}),
+            ...(options.headers || {}),
             'X-Request-ID': requestId,
             Authorization: `Bearer ${SOCIAL_MEDIA_API_KEY}`,
           },
