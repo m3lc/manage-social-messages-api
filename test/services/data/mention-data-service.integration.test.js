@@ -26,7 +26,7 @@ describe('MentionDataService Integration Tests', function () {
   before(async function () {
     // Initialize the services
     mockSocialMediaService = {
-      replyComment: async ({ mention, content, reqUser }) => {
+      reply: async ({ mention, content, reqUser }) => {
         // Simulate some processing time
         await sleep(100);
         return {
