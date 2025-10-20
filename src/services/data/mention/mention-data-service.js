@@ -4,6 +4,7 @@ import { db as dbInstance } from '#@models/index.js';
 import { mentionStates, mentionTypes } from '#@enums/index.js';
 import { AuditDataService } from '#@services/data/audit-data-service.js';
 import { MentionCommentAdapter } from '#@services/data/mention/mention-comment-adapter.js';
+import { MentionMessageAdapter } from '#@services/data/mention/mention-message-adapter.js';
 import { createLogger } from '#@services/utils/logger/index.js';
 import { sleep } from '#@services/utils/sleep.js';
 import { SocialMediaService } from '#@/services/social-media/social-media-service.js';
@@ -62,7 +63,7 @@ export class MentionDataService {
     const fetchPromises = Object.values(this.adapters).map((adapter) =>
       adapter
         .fetchAndSyncMentions(reqUser)
-        .then(() => adapter.isSyncing())
+        .then(() => adapter.isSyncingFetch())
         .catch((error) => {
           logger.error(`Error in adapter ${adapter.constructor.name}`, error);
           return { error: error.message };
@@ -163,6 +164,11 @@ export class MentionDataService {
     // Register all adapters
     this.adapters = {
       [mentionTypes.COMMENT]: MentionCommentAdapter.getInstance({
+        db: this.db,
+        socialMediaService: this.socialMediaService,
+        auditDataService: this.auditDataService,
+      }),
+      [mentionTypes.MESSAGE]: MentionMessageAdapter.getInstance({
         db: this.db,
         socialMediaService: this.socialMediaService,
         auditDataService: this.auditDataService,

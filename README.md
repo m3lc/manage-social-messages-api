@@ -181,14 +181,14 @@ The service is configured via environment variables, which can be set in a `.env
 
 **Key Environment Variables:**
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SOCIAL_PLATFORMS` | Comma-separated list of platforms to monitor | `facebook,twitter,instagram` |
-| `SOCIAL_MEDIA_API_HISTORY_LAST_DAYS` | Number of days to fetch historical posts | `7` |
-| `AYRSHARE_API_KEY` | Your Ayrshare API key | `your-api-key-here` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/dbname` |
-| `JWT_SECRET` | Secret for JWT authentication | `your-secret-key` |
-| `LOG_LEVEL` | Winston log level | `info` |
+| Variable                             | Description                                  | Example                                      |
+| ------------------------------------ | -------------------------------------------- | -------------------------------------------- |
+| `SOCIAL_PLATFORMS`                   | Comma-separated list of platforms to monitor | `facebook,twitter,instagram`                 |
+| `SOCIAL_MEDIA_API_HISTORY_LAST_DAYS` | Number of days to fetch historical posts     | `7`                                          |
+| `AYRSHARE_API_KEY`                   | Your Ayrshare API key                        | `your-api-key-here`                          |
+| `DATABASE_URL`                       | PostgreSQL connection string                 | `postgres://user:pass@localhost:5432/dbname` |
+| `JWT_SECRET`                         | Secret for JWT authentication                | `your-secret-key`                            |
+| `LOG_LEVEL`                          | Winston log level                            | `info`                                       |
 
 Refer to `.env.sample` for a complete list of configuration options.
 
@@ -354,13 +354,13 @@ Platform-specific comment parsing:
 
 ### Key Tables
 
-| Table | Description |
-|-------|-------------|
-| `mentions` | Social media mentions/comments with platform metadata |
-| `tasks` | Outbox pattern task queue for async operations |
-| `users` | User accounts and authentication data |
-| `audits` | Immutable audit trail of all state changes |
-| `circuit_breaker_states` | Distributed circuit breaker coordination |
+| Table                    | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `mentions`               | Social media mentions/comments with platform metadata |
+| `tasks`                  | Outbox pattern task queue for async operations        |
+| `users`                  | User accounts and authentication data                 |
+| `audits`                 | Immutable audit trail of all state changes            |
+| `circuit_breaker_states` | Distributed circuit breaker coordination              |
 
 ### Entity Relationships
 
@@ -374,7 +374,7 @@ Platform-specific comment parsing:
 ### Ayrshare API Constraints
 
 - **Incomplete Platform Support:** `/history/:platform` returns 404 for some platforms (e.g., Bluesky)
-- **Direct Messages Inaccessible:** `/messages/:platform` returns 403 (not available in current API tier)
+- ~~**Direct Messages Inaccessible:** `/messages/:platform` returns 403 (not available in current API tier)~~ after it is enabled it works for some platforms eg twitter; didn't work on bluesky, instagram, reddit
 - **Query Parameter Limitations:** `platforms` parameter doesn't accept arrays consistently
 - **Path Parameter Inconsistency:** Multiple values not supported uniformly across endpoints; some path param values need additional query params in order to work
 
@@ -399,7 +399,7 @@ Platform-specific comment parsing:
 
 ## Roadmap
 
-- [ ] Add direct message support (pending API access)
+- [ ] ~~Add direct message support (pending API access)~~
 - [ ] Implement request validation middleware (`express-validator`)
 - [ ] Add controller level error handling
 - [ ] Add API rate limiting middleware

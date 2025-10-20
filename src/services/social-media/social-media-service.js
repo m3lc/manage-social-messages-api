@@ -12,6 +12,7 @@ import { circuitBreaker, CIRCUIT_STATE } from '#@services/utils/circuit-breaker.
 import { exponentialBackoff } from '#@services/utils/exponential-backoff.js';
 import { createLogger } from '#@services/utils/logger/index.js';
 import { db as dbInstance } from '#@models/index.js';
+import mentionTypes from '#@/enums/mention-types.js';
 
 const logger = createLogger(import.meta.url);
 
@@ -128,15 +129,49 @@ export class SocialMediaService {
     return comments;
   }
 
-  // async findAllMessages() {
-  //   const messages = await processPromises({
-  //     promiseFunc: async ({ entity: platform }) =>
-  //       await this.httpRequest({ platform, url: `/messages/${platform}` }),
-  //     entities: this.platforms,
-  //     promisesLimit: this.platforms.length,
-  //   });
-  //   return messages;
-  // }
+  async findAllMessages(reqUser) {
+    const messages = [];
+    for (const platform of this.platforms) {
+      try {
+        const response = await this.httpRequest({
+          reqUser,
+          platform,
+          url: `/messages/${platform}`,
+        });
+
+        // split by conversationId and check if most recent message (index 0) is `action === 'received'`
+        const conversations = response.data?.messages?.reduce((a, b) => {
+          if (!a[b.conversationId]) {
+            a[b.conversationId] = [];
+          }
+          a[b.conversationId].push(b);
+          return a;
+        }, {});
+
+        if (conversations) {
+          Object.values(conversations).forEach((conversation) => {
+            if (conversation[0].action === 'received') {
+              messages.push({
+                ...conversation[0],
+                platform,
+              });
+            }
+          });
+        }
+      } catch (error) {
+        logger.error(this.getHttpErrorMessage(reqUser, platform), error);
+      }
+    }
+    return messages;
+  }
+
+  async reply({ mention, content, reqUser }) {
+    if (mention.type === mentionTypes.MESSAGE) {
+      return this.replyMessage({ mention, message: content, reqUser });
+    } else {
+      return this.replyComment({ mention, content, reqUser });
+    }
+  }
 
   /**
    * Reply to a comment/mention
@@ -146,10 +181,9 @@ export class SocialMediaService {
    * @param {Object} params.reqUser - Authenticated user object
    * @param {number} params.reqUser.id - User ID
    * @param {string} params.reqUser.email - User email
-   * @param {Object} params.transaction - Database transaction
    * @returns {Promise<Object>} Reply response data
    */
-  async replyComment({ mention, content, reqUser, transaction }) {
+  async replyComment({ mention, content, reqUser }) {
     // TODO: check if the same reply has been sent already to the social media api
     // needs to use specific comments handlers per platform, to identify comments and replies
 
@@ -171,6 +205,41 @@ export class SocialMediaService {
       return response.data;
     } catch (error) {
       logger.error(`replyComment - failed for mentionId: ${mention.id}`, error);
+      return {
+        status: 'error',
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Reply to a message/mention
+   * @param {Object} params
+   * @param {Object} params.mention - Mention object to reply to
+   * @param {string} params.message - Reply message
+   * @param {Object} params.reqUser - Authenticated user object
+   * @param {number} params.reqUser.id - User ID
+   * @param {string} params.reqUser.email - User email
+   * @returns {Promise<Object>} Reply response data
+   */
+  async replyMessage({ mention, message, reqUser }) {
+    try {
+      const response = await this.httpRequest({
+        reqUser,
+        platform: mention.platform,
+        url: `/messages/${encodeURIComponent(mention.platform)}`,
+        method: 'post',
+        options: {
+          data: {
+            message,
+            recipientId: mention.data?.socialMediaPayload?.senderId,
+          },
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      logger.error(`replyMessage - failed for mentionId: ${mention.id}`, error);
       return {
         status: 'error',
         error: error.message,

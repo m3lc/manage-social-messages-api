@@ -7,6 +7,24 @@ import { Model } from 'sequelize';
  */
 
 /**
+ * Plain JavaScript object representation of a Mention (e.g., from .toJSON())
+ * @typedef {Object} MentionObject
+ * @property {number} id - Mention ID
+ * @property {string} content - Mention content
+ * @property {string} socialMediaPlatformRef - Platform-specific reference ID
+ * @property {string} socialMediaAPIPostRef - API post reference
+ * @property {string} platform - Social media platform name
+ * @property {string} type - Mention type (e.g., COMMENT, MESSAGE, REPLY)
+ * @property {string} [disposition] - Mention disposition
+ * @property {string} [state] - Mention state
+ * @property {Date|string} createdAt - Creation timestamp
+ * @property {Date|string} updatedAt - Last update timestamp
+ * @property {MentionData} [data] - Additional JSON data
+ * @property {number} [userId] - Associated user ID
+ * @property {number} [mentionId] - Parent mention ID (for replies)
+ */
+
+/**
  * Mention model
  * @param {import('sequelize').Sequelize} sequelize
  * @param {import('sequelize').DataTypes} DataTypes
